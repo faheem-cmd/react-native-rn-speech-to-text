@@ -134,4 +134,5 @@ MIT
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
 u
+
 # react-native-rn-speech-to-text

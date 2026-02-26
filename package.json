@@ -47,9 +47,9 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://www.npmjs.com/~faheem_katta.git"
+    "url": "https://github.com/faheem-cmd/react-native-rn-speech-to-text"
   },
-  "author": "faheem-weft <faheem.tfora@gmail.com> (https://www.npmjs.com/~faheem_katta)",
+  "author": "faheem-katta <faheem.tfora@gmail.com> (https://www.npmjs.com/~faheem_katta)",
   "license": "MIT",
   "bugs": {
     "url": "https://www.npmjs.com/~faheem_katta/issues"
