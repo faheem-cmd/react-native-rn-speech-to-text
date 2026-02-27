@@ -7,7 +7,8 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.modules.core.DeviceEventManagerModule
 
 class SpeechRecognitionListener(
-    private val reactContext: ReactApplicationContext
+    private val reactContext: ReactApplicationContext,
+    private val module: SpeechToTextAndroidModule
 ) : RecognitionListener {
 
     private fun sendEvent(event: String, data: String?) {
@@ -22,20 +23,19 @@ class SpeechRecognitionListener(
         sendEvent("onSpeechStart", "Listening...")
     }
 
-    override fun onBeginningOfSpeech() {
-        sendEvent("onSpeechBeginning", null)
-    }
+    override fun onBeginningOfSpeech() {}
 
     override fun onRmsChanged(rmsdB: Float) {}
 
     override fun onBufferReceived(buffer: ByteArray?) {}
 
     override fun onEndOfSpeech() {
-        sendEvent("onSpeechEnd", null)
+        module.stopListeningInternal()
     }
 
     override fun onError(error: Int) {
         sendEvent("onSpeechError", error.toString())
+        module.resetState()
     }
 
     override fun onResults(results: Bundle?) {
@@ -43,14 +43,11 @@ class SpeechRecognitionListener(
             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
 
         sendEvent("onSpeechResult", matches?.get(0))
+
+        module.stopListeningInternal()
     }
 
-    override fun onPartialResults(partialResults: Bundle?) {
-        val matches =
-            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-
-        sendEvent("onSpeechPartialResult", matches?.get(0))
-    }
+    override fun onPartialResults(partialResults: Bundle?) {}
 
     override fun onEvent(eventType: Int, params: Bundle?) {}
 }
