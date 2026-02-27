@@ -4,8 +4,8 @@ import type { EmitterSubscription } from 'react-native';
 interface SpeechToTextAndroidNativeModule {
   startListening(): void;
   stopListening(): void;
+  setContinuousMode(value: boolean): void;
 
-  // Required for NativeEventEmitter typing
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }
@@ -21,6 +21,10 @@ const eventEmitter = new NativeEventEmitter(NativeModules.SpeechToTextAndroid);
 
 export const startListening = (): void => {
   NativeModule.startListening();
+};
+
+export const setContinuousMode = (value: boolean): void => {
+  NativeModule.setContinuousMode(value);
 };
 
 export const stopListening = (): void => {
