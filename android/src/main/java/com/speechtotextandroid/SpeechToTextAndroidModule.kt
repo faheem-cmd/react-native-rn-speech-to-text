@@ -6,90 +6,85 @@ import android.os.Looper
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import com.facebook.react.bridge.*
-import com.facebook.react.modules.core.DeviceEventManagerModule
 
 class SpeechToTextAndroidModule(
-  private val reactContext: ReactApplicationContext
+    private val reactContext: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactContext) {
 
-  private var speechRecognizer: SpeechRecognizer? = null
-  private val mainHandler = Handler(Looper.getMainLooper())
-  private var isListening = false
+    private var speechRecognizer: SpeechRecognizer? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
-  override fun getName(): String = "SpeechToTextAndroid"
+    private var isListening = false
+    private var continuousMode = false
 
-  private fun sendEvent(event: String, data: String?) {
-    if (!reactContext.hasActiveCatalystInstance()) return
+    override fun getName(): String = "SpeechToTextAndroid"
 
-    reactContext
-      .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit(event, data)
-  }
-
-  private fun createRecognizerIfNeeded() {
-    if (speechRecognizer == null) {
-      speechRecognizer = SpeechRecognizer.createSpeechRecognizer(reactContext)
-
-      speechRecognizer?.setRecognitionListener(
-        object : android.speech.RecognitionListener {
-
-          override fun onReadyForSpeech(params: android.os.Bundle?) {
-            sendEvent("onSpeechStart", "Listening...")
-          }
-
-          override fun onResults(results: android.os.Bundle?) {
-            val matches =
-              results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-
-            sendEvent("onSpeechResult", matches?.get(0))
-          }
-
-          override fun onError(error: Int) {
-            sendEvent("onSpeechError", error.toString())
-          }
-
-          override fun onBeginningOfSpeech() {}
-          override fun onRmsChanged(rmsdB: Float) {}
-          override fun onBufferReceived(buffer: ByteArray?) {}
-          override fun onEndOfSpeech() {}
-          override fun onPartialResults(partialResults: android.os.Bundle?) {}
-          override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+    private fun createRecognizerIfNeeded() {
+        if (speechRecognizer == null) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(reactContext)
+            speechRecognizer?.setRecognitionListener(
+                SpeechRecognitionListener(reactContext, this)
+            )
         }
-      )
     }
-  }
 
-  @ReactMethod
-  fun startListening() {
-    mainHandler.post {
-
-      if (!SpeechRecognizer.isRecognitionAvailable(reactContext)) return@post
-      if (isListening) return@post
-
-      createRecognizerIfNeeded()
-
-      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-      intent.putExtra(
-        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-      )
-      intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-
-      speechRecognizer?.startListening(intent)
-      isListening = true
+    @ReactMethod
+    fun setContinuousMode(value: Boolean) {
+        continuousMode = value
     }
-  }
 
-  @ReactMethod
-  fun stopListening() {
-    mainHandler.post {
-      speechRecognizer?.stopListening()
-      isListening = false
+    @ReactMethod
+    fun startListening() {
+        mainHandler.post {
+
+            if (!SpeechRecognizer.isRecognitionAvailable(reactContext)) return@post
+            if (isListening) return@post
+
+            createRecognizerIfNeeded()
+
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            intent.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+
+            speechRecognizer?.startListening(intent)
+            isListening = true
+        }
     }
-  }
 
-  override fun onCatalystInstanceDestroy() {
-    speechRecognizer?.destroy()
-    speechRecognizer = null
-  }
+    @ReactMethod
+    fun stopListening() {
+        mainHandler.post {
+            continuousMode = false   // 🔥 Stop continuous mode
+            speechRecognizer?.stopListening()
+            isListening = false
+        }
+    }
+
+    // 🔥 Called when speech ends
+    fun stopListeningInternal() {
+        mainHandler.post {
+            speechRecognizer?.stopListening()
+            isListening = false
+
+            // 🔥 Restart automatically if continuous mode enabled
+            if (continuousMode) {
+                mainHandler.postDelayed({
+                    startListening()
+                }, 500) // small delay like Google
+            }
+        }
+    }
+
+    fun resetState() {
+        isListening = false
+    }
+
+    override fun onCatalystInstanceDestroy() {
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+    }
 }
